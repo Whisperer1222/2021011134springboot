@@ -1,0 +1,307 @@
+package com.controller;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Date;
+import java.util.List;
+import javax.servlet.http.HttpServletRequest;
+
+import com.entity.ShangJiaEntity;
+import com.service.ShangJiaService;
+import com.utils.ValidatorUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+import com.annotation.IgnoreAuth;
+
+import com.entity.ShangpinxinxiEntity;
+import com.entity.view.ShangpinxinxiView;
+
+import com.service.ShangpinxinxiService;
+import com.service.TokenService;
+import com.utils.PageUtils;
+import com.utils.R;
+import com.utils.MD5Util;
+import com.utils.MPUtil;
+import com.utils.CommonUtil;
+
+
+/**
+ * 商品信息
+ * 后端接口
+ * @author 
+ * @email 
+ * @date
+ */
+@RestController
+@RequestMapping("/shangpinxinxi")
+public class ShangpinxinxiController {
+    @Autowired
+    private ShangpinxinxiService shangpinxinxiService;
+    @Autowired
+	private ShangJiaService shangJiaService;
+
+
+
+	/**
+     * 后端列表
+     */
+    @RequestMapping("/page")
+    public R page(@RequestParam Map<String, Object> params,ShangpinxinxiEntity shangpinxinxi,
+		HttpServletRequest request){
+		Long id = (Long)request.getSession().getAttribute("userId");
+			// 如果用户ID不为空，则添加到查询参数中
+		if (id!=null){
+			params.put("sjid",id);
+		}
+			// 调用商品信息服务层的方法，获取分页数据
+		PageUtils page = shangpinxinxiService.queryPage(params, new EntityWrapper<ShangpinxinxiEntity>());
+		return R.ok().put("data", page);
+    }
+    
+    /**
+     * 前端列表
+     */
+	@IgnoreAuth
+    @RequestMapping("/list")
+    public R list(@RequestParam Map<String, Object> params,ShangpinxinxiEntity shangpinxinxi, HttpServletRequest request){
+        EntityWrapper<ShangpinxinxiEntity> ew = new EntityWrapper<ShangpinxinxiEntity>();
+		// 如果商品名称不为空，则添加模糊匹配条件
+		if (StringUtils.isNotEmpty(shangpinxinxi.getShangpinmingcheng())){
+			ew.like("shangpinmingcheng",shangpinxinxi.getShangpinmingcheng());
+		}
+		// 如果商品分类不为空，则添加模糊匹配条件
+		if (StringUtils.isNotEmpty(shangpinxinxi.getShangpinfenlei())){
+			ew.like("shangpinfenlei",shangpinxinxi.getShangpinfenlei());
+		}
+		// 初始化降序排序字段列表
+		ArrayList<String> desc = new ArrayList<>();
+		// 初始化升序排序字段列表
+		ArrayList<String> asc = new ArrayList<>();
+		// 获取价格排序参数
+		String price1 = shangpinxinxi.getPrice1();
+		// 获取库存量排序参数
+		String hpl1 = shangpinxinxi.getHpl1();
+		// 获取销量排序参数
+		String xiaoliang1 = shangpinxinxi.getXiaoliang1();
+		// 如果价格排序参数为"从高到低"或"由高到低"，则添加价格字段到降序排序列表
+		if (StringUtils.isNotEmpty(price1)&&(price1.equals("从高到低")||price1.equals("由高到低"))){
+			desc.add("price");
+		}
+		// 如果价格排序参数为"从低到高"或"由低到高"，则添加价格字段到升序排序列表
+		if (StringUtils.isNotEmpty(price1)&&(price1.equals("从低到高")||price1.equals("由低到高"))){
+			asc.add("price");
+		}
+		// 对销量和库存量排序参数的处理与价格类似
+		if (StringUtils.isNotEmpty(xiaoliang1)&&(xiaoliang1.equals("从高到低")||xiaoliang1.equals("由高到低"))){
+			desc.add("xiaoliang");
+		}
+		if (StringUtils.isNotEmpty(xiaoliang1)&&(xiaoliang1.equals("从低到高")||xiaoliang1.equals("由低到高"))){
+			asc.add("xiaoliang");
+		}
+		if (StringUtils.isNotEmpty(hpl1)&&(hpl1.equals("从高到低")||hpl1.equals("由高到低"))){
+			desc.add("hpl");
+		}
+		if (StringUtils.isNotEmpty(hpl1)&&(hpl1.equals("从低到高")||hpl1.equals("由低到高"))){
+			asc.add("hpl");
+		}
+		// 根据降序排序字段列表设置查询条件包装器的降序排序
+		ew.orderDesc(desc);
+		// 根据升序排序字段列表设置查询条件包装器的升序排序
+		ew.orderAsc(asc);
+		// 调用商品信息服务层的方法，获取分页数据
+		PageUtils page = shangpinxinxiService.queryPage(params, ew);
+        return R.ok().put("data", page);
+    }
+
+	/**
+     * 列表
+     */
+    @RequestMapping("/lists")
+    public R list( ShangpinxinxiEntity shangpinxinxi){
+       	EntityWrapper<ShangpinxinxiEntity> ew = new EntityWrapper<ShangpinxinxiEntity>();
+      	ew.allEq(MPUtil.allEQMapPre( shangpinxinxi, "shangpinxinxi")); 
+        return R.ok().put("data", shangpinxinxiService.selectListView(ew));
+    }
+
+	 /**
+     * 查询
+     */
+    @RequestMapping("/query")
+    public R query(ShangpinxinxiEntity shangpinxinxi){
+        EntityWrapper< ShangpinxinxiEntity> ew = new EntityWrapper< ShangpinxinxiEntity>();
+ 		ew.allEq(MPUtil.allEQMapPre( shangpinxinxi, "shangpinxinxi")); 
+		ShangpinxinxiView shangpinxinxiView =  shangpinxinxiService.selectView(ew);
+		return R.ok("查询商品信息成功").put("data", shangpinxinxiView);
+    }
+	
+    /**
+     * 后端详情
+     */
+    @RequestMapping("/info/{id}")
+    public R info(@PathVariable("id") Long id){
+        ShangpinxinxiEntity shangpinxinxi = shangpinxinxiService.selectById(id);
+		shangpinxinxi.setClicknum(shangpinxinxi.getClicknum()+1);
+		shangpinxinxi.setClicktime(new Date());
+		shangpinxinxiService.updateById(shangpinxinxi);
+        return R.ok().put("data", shangpinxinxi);
+    }
+
+    /**
+     * 前端详情
+     */
+	@IgnoreAuth
+    @RequestMapping("/detail/{id}")
+    public R detail(@PathVariable("id") Long id){
+        ShangpinxinxiEntity shangpinxinxi = shangpinxinxiService.selectById(id);
+		shangpinxinxi.setClicknum(shangpinxinxi.getClicknum()+1);
+		shangpinxinxi.setClicktime(new Date());
+		shangpinxinxiService.updateById(shangpinxinxi);
+        return R.ok().put("data", shangpinxinxi);
+    }
+    
+
+
+
+    /**
+     * 后端保存
+     */
+    @RequestMapping("/save")
+    public R save(@RequestBody ShangpinxinxiEntity shangpinxinxi, HttpServletRequest request){
+		Long sjid = shangpinxinxi.getSjid();
+		if (sjid==null){
+			return R.error();
+		}
+		ShangJiaEntity shangJiaEntity = shangJiaService.selectById(sjid);
+		if (!"是".equals(shangJiaEntity.getSfsh())){
+			return R.error("该商家未经审核或审核未通过，不能发布商品");
+		}
+
+		shangpinxinxi.setId(new Date().getTime()+new Double(Math.floor(Math.random()*1000)).longValue());
+    	//ValidatorUtils.validateEntity(shangpinxinxi);
+        shangpinxinxiService.insert(shangpinxinxi);
+        return R.ok();
+    }
+    
+    /**
+     * 前端保存
+     */
+    @RequestMapping("/add")
+    public R add(@RequestBody ShangpinxinxiEntity shangpinxinxi, HttpServletRequest request){
+    	shangpinxinxi.setId(new Date().getTime()+new Double(Math.floor(Math.random()*1000)).longValue());
+    	//ValidatorUtils.validateEntity(shangpinxinxi);
+        shangpinxinxiService.insert(shangpinxinxi);
+        return R.ok();
+    }
+
+    /**
+     * 修改
+     */
+    @RequestMapping("/update")
+    public R update(@RequestBody ShangpinxinxiEntity shangpinxinxi, HttpServletRequest request){
+        //ValidatorUtils.validateEntity(shangpinxinxi);
+        shangpinxinxiService.updateById(shangpinxinxi);//全部更新
+        return R.ok();
+    }
+    
+
+    /**
+     * 删除
+     */
+    @RequestMapping("/delete")
+    public R delete(@RequestBody Long[] ids){
+        shangpinxinxiService.deleteBatchIds(Arrays.asList(ids));
+        return R.ok();
+    }
+    
+    /**
+     * 提醒接口
+     */
+	@RequestMapping("/remind/{columnName}/{type}")
+	public R remindCount(@PathVariable("columnName") String columnName, HttpServletRequest request, 
+						 @PathVariable("type") String type,@RequestParam Map<String, Object> map) {
+		map.put("column", columnName);
+		map.put("type", type);
+		
+		if(type.equals("2")) {
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+			Calendar c = Calendar.getInstance();
+			Date remindStartDate = null;
+			Date remindEndDate = null;
+			if(map.get("remindstart")!=null) {
+				Integer remindStart = Integer.parseInt(map.get("remindstart").toString());
+				c.setTime(new Date()); 
+				c.add(Calendar.DAY_OF_MONTH,remindStart);
+				remindStartDate = c.getTime();
+				map.put("remindstart", sdf.format(remindStartDate));
+			}
+			if(map.get("remindend")!=null) {
+				Integer remindEnd = Integer.parseInt(map.get("remindend").toString());
+				c.setTime(new Date());
+				c.add(Calendar.DAY_OF_MONTH,remindEnd);
+				remindEndDate = c.getTime();
+				map.put("remindend", sdf.format(remindEndDate));
+			}
+		}
+		
+		Wrapper<ShangpinxinxiEntity> wrapper = new EntityWrapper<ShangpinxinxiEntity>();
+		if(map.get("remindstart")!=null) {
+			wrapper.ge(columnName, map.get("remindstart"));
+		}
+		if(map.get("remindend")!=null) {
+			wrapper.le(columnName, map.get("remindend"));
+		}
+
+
+		int count = shangpinxinxiService.selectCount(wrapper);
+		return R.ok().put("count", count);
+	}
+	
+	/**
+     * 前端智能排序
+     */
+	@IgnoreAuth
+    @RequestMapping("/autoSort")
+    public R autoSort(@RequestParam Map<String, Object> params,ShangpinxinxiEntity shangpinxinxi, HttpServletRequest request,String pre){
+        EntityWrapper<ShangpinxinxiEntity> ew = new EntityWrapper<ShangpinxinxiEntity>();
+		// 创建新Map用于存放排序参数
+        Map<String, Object> newMap = new HashMap<String, Object>();
+        Map<String, Object> param = new HashMap<String, Object>();
+		Iterator<Map.Entry<String, Object>> it = param.entrySet().iterator();
+		// 遍历请求参数
+		while (it.hasNext()) {
+			Map.Entry<String, Object> entry = it.next();
+			String key = entry.getKey();
+			String newKey = entry.getKey();
+			// 根据前缀pre处理请求参数的key
+			if (pre.endsWith(".")) {
+				newMap.put(pre + newKey, entry.getValue());
+			} else if (StringUtils.isEmpty(pre)) {
+				newMap.put(newKey, entry.getValue());
+			} else {
+				newMap.put(pre + "." + newKey, entry.getValue());
+			}
+		}
+		// 添加智能排序参数，按照点击数降序排序
+		params.put("sort", "clicknum");
+        params.put("order", "desc");
+		// 调用商品信息服务层的方法，获取分页数据
+		PageUtils page = shangpinxinxiService.queryPage(params, MPUtil.sort(MPUtil.between(MPUtil.likeOrEq(ew, shangpinxinxi), params), params));
+		// 返回操作成功响应，包含分页数据
+        return R.ok().put("data", page);
+    }
+
+
+}
